@@ -1,0 +1,7 @@
+{
+  "name": "placeholder-service",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "echo 'Service not built yet' && tail -f /dev/null"
+  }
+}
