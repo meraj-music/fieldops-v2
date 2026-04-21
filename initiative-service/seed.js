@@ -45,6 +45,7 @@ const runSeed = async () => {
           status VARCHAR(50) DEFAULT 'Ideation',
           due_date DATE,
           next_action TEXT,
+          last_update TEXT, /* <--- ADDED THE MISSING COLUMN HERE */
           supervising_name VARCHAR(100),
           owner_name VARCHAR(100),
           owner_id INT REFERENCES users(id),

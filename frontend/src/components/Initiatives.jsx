@@ -16,9 +16,6 @@ const getDueDateColor = (dateString) => {
   return 'text-green-600';
 };
 
-// UPDATE YOUR IMPORTS AT THE TOP OF THE FILE:
-// import { ChevronDown, ChevronRight, Plus, ArrowRightCircle, CheckSquare, XCircle, Trash2, Users, Folder } from 'lucide-react';
-
 const InitiativeRow = React.memo(({ init, index, isManagerTeamGoals, handleStatusChange, setSelectedInitiative, setIsModalOpen }) => {
   return (
     <tr className="border-b border-gray-100 hover:bg-brand-light transition-colors group">
@@ -27,15 +24,15 @@ const InitiativeRow = React.memo(({ init, index, isManagerTeamGoals, handleStatu
       <td className="p-3 text-base font-bold text-brand-dark">{init.title}</td>
       <td className={`p-3 text-sm ${getDueDateColor(init.due_date)}`}>{init.due_date ? new Date(init.due_date).toLocaleDateString() : ''}</td>
       
-      {/* FIXED: Truncated text so it doesn't break the table width */}
-      <td className="p-3 text-xs text-gray-600 max-w-[150px] truncate" title={init.description}>
-        {init.description || 'No updates'}
+      {/* FIXED: Now pointing to last_update instead of description */}
+      <td className="p-3 text-xs text-gray-600 max-w-[150px] truncate" title={init.last_update}>
+        {init.last_update || <span className="text-gray-300 italic">No updates yet</span>}
       </td>
+      
       <td className="p-3 text-xs text-gray-600 max-w-[150px] truncate" title={init.next_action}>
         {init.next_action || 'None'}
       </td>
       
-      {/* FIXED: New Icon and proper alignment */}
       <td className="p-3 text-center w-12">
         <button onClick={() => { setSelectedInitiative(init); setIsModalOpen(true); }} className="text-gray-400 hover:text-brand-orange transition-colors" title="Open Details">
           <ArrowRightCircle size={20} strokeWidth={1.5} />
@@ -61,7 +58,7 @@ export default function Initiatives() {
   const currentUser = useMemo(() => ({ id: 1, role: 'Manager', name: 'CSManager1', department: 'CS' }), []);
   
   const [isDirectoryOpen, setIsDirectoryOpen] = useState(false);
-  const directoryRef = useRef(null); // NEW: Ref for clicking outside
+  const directoryRef = useRef(null);
   const [allUsers, setAllUsers] = useState([]);
   
   const [activeBoard, setActiveBoard] = useState('Team'); 
@@ -79,7 +76,6 @@ export default function Initiatives() {
     'Ideation': true, 'In Progress': true, 'Done': true, 'Cancelled': false
   });
 
-  // NEW: Click outside listener for the Directory dropdown
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (directoryRef.current && !directoryRef.current.contains(event.target)) {
@@ -103,7 +99,6 @@ export default function Initiatives() {
       })
       .catch(err => {
         console.error("Directory Fetch Error:", err);
-        // If it fails, maybe the server isn't up?
       });
   }, []);
 

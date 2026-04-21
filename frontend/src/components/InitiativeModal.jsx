@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Save, User, Users, AlignLeft, Calendar, Tag, MessageSquare, Paperclip, Send, Trash2, Link as LinkIcon } from 'lucide-react';
+import { X, Send, Link as LinkIcon, Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function InitiativeModal({ isOpen, onClose, initiative, currentUser, refreshData, activeProjectId, activeBoard }) {
@@ -8,7 +8,6 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
     next_action: '', last_update: '', raci_supervising: [], raci_responsible: [], raci_consulted_informed: []
   });
 
-  const [chipInput, setChipInput] = useState('');
   const [dbUsers, setDbUsers] = useState([]);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
@@ -27,7 +26,6 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
     fetchUsers();
 
     if (initiative) {
-      // DATA FIX: Split strings from DB back into arrays for the UI chips
       setFormData({
         title: initiative.title || '',
         description: initiative.description || '',
@@ -43,7 +41,7 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
       fetch(`http://localhost:5002/api/initiatives/${initiative.id}/resources`).then(res => res.json()).then(setResources).catch(console.error);
     } else {
       setFormData({ title: '', description: '', status: 'Ideation', due_date: '', next_action: '', last_update: '', raci_supervising: [], raci_responsible: [], raci_consulted_informed: [] });
-      setComments([]); setResources([]);
+      setComments([]); setResources([]); setNewResource({ title: '', url: '' });
     }
   }, [initiative, isOpen, fetchUsers]);
 
@@ -61,9 +59,19 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
         owner_id: currentUser.id, 
         project_id: activeProjectId || null 
       };
+      
       const response = await fetch(url, { method: initiative ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-      if (response.ok) { refreshData(); onClose(); }
-    } catch (error) { console.error(error); }
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        alert(`Server Error: ${errorText}`);
+        return; 
+      }
+      refreshData(); onClose();
+    } catch (error) { 
+      console.error(error); 
+      alert("Network Error: Could not reach backend."); 
+    }
   };
 
   const handlePostComment = async () => {
@@ -74,6 +82,20 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
         body: JSON.stringify({ user_id: currentUser.id, content: newComment })
       });
       if (res.ok) { setNewComment(''); fetch(`http://localhost:5002/api/initiatives/${initiative.id}/comments`).then(r => r.json()).then(setComments); }
+    } catch (error) { console.error(error); }
+  };
+
+  const handleAddResource = async () => {
+    if (!newResource.title.trim() || !newResource.url.trim() || !initiative) return;
+    try {
+      const res = await fetch(`http://localhost:5002/api/initiatives/${initiative.id}/resources`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newResource.title, url: newResource.url })
+      });
+      if (res.ok) { 
+        setNewResource({ title: '', url: '' }); 
+        fetch(`http://localhost:5002/api/initiatives/${initiative.id}/resources`).then(r => r.json()).then(setResources); 
+      }
     } catch (error) { console.error(error); }
   };
 
@@ -90,8 +112,7 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
         <div className="fixed inset-0 z-50 flex justify-end">
           <motion.div className="fixed inset-0 bg-black/25 backdrop-blur-[1px]" variants={overlayVariants} initial="hidden" animate="visible" exit="exit" onClick={onClose} />
           
-          {/* UPDATED WIDTH: max-w-xl for a better balance */}
-          <motion.div className="relative w-full max-w-xl h-full bg-white shadow-2xl flex flex-col border-l border-gray-100" variants={modalVariants} initial="hidden" animate="visible" exit="exit">
+          <motion.div className={`relative w-full h-full bg-white shadow-2xl flex flex-col border-l border-gray-100 ${initiative ? 'max-w-3xl' : 'max-w-xl'}`} variants={modalVariants} initial="hidden" animate="visible" exit="exit">
             
             <div className="flex items-center justify-between px-8 py-5 border-b border-gray-100">
               <h2 className="text-lg font-bold text-gray-800">{initiative ? 'Task Details' : 'Create New Task'}</h2>
@@ -99,10 +120,9 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
             </div>
 
             <div className="flex-1 overflow-y-auto px-8 py-8 space-y-10 pb-40">
-              <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="Untitiled Task" className="w-full text-3xl font-bold text-gray-900 border-none p-0 focus:ring-0 placeholder-gray-200" />
+              <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="Untitled Task" className="w-full text-3xl font-bold text-gray-900 border-none p-0 focus:ring-0 placeholder-gray-200" />
 
               <div className="space-y-8">
-                {/* Meta Grid */}
                 <div className="grid grid-cols-2 gap-8">
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Status</label>
@@ -116,13 +136,11 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
                   </div>
                 </div>
 
-                {/* Description */}
                 <div className="space-y-2">
                   <label className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Description</label>
-                  <textarea name="description" value={formData.description} onChange={handleInputChange} rows="5" placeholder="Add a detailed description..." className="w-full border-gray-200 rounded-xl text-sm focus:border-brand-orange focus:ring-brand-orange" />
+                  <textarea name="description" value={formData.description} onChange={handleInputChange} rows="4" placeholder="Add a detailed description..." className="w-full border-gray-200 rounded-xl text-sm focus:border-brand-orange focus:ring-brand-orange" />
                 </div>
 
-                {/* Updates & Actions */}
                 <div className="grid grid-cols-1 gap-6">
                   <div className="space-y-2">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Last Update</label>
@@ -134,7 +152,6 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
                   </div>
                 </div>
 
-                {/* Share Section */}
                 <div className="pt-6 border-t border-gray-100 space-y-6">
                    <h3 className="text-sm font-bold text-gray-800">Share With</h3>
                    
@@ -173,31 +190,50 @@ export default function InitiativeModal({ isOpen, onClose, initiative, currentUs
               </div>
 
               {initiative && (
-                <div className="pt-10 border-t border-gray-100 space-y-10">
-                  <div className="space-y-4">
+                <div className="pt-10 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-8">
+                  
+                  {/* RESOURCES FIX: Stacked layout with min-w-0 to prevent overlap */}
+                  <div className="flex flex-col min-w-0 space-y-4">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Resources</label>
-                    <div className="grid grid-cols-1 gap-2">
+                    
+                    <div className="flex flex-col gap-2 bg-gray-50 p-3 rounded-2xl border border-gray-100">
+                      <input type="text" value={newResource.title} onChange={e => setNewResource({...newResource, title: e.target.value})} placeholder="Link Title (e.g. Figma Design)" className="w-full text-sm border-gray-200 rounded-xl px-3 py-2 bg-white" />
+                      <div className="flex gap-2">
+                        <input type="url" value={newResource.url} onChange={e => setNewResource({...newResource, url: e.target.value})} placeholder="https://..." className="flex-1 text-sm border-gray-200 rounded-xl px-3 py-2 bg-white" />
+                        <button onClick={handleAddResource} className="px-4 py-2 bg-gray-900 text-white text-xs font-bold rounded-xl hover:bg-gray-800 transition-colors shadow-md">Add</button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-2 mt-2">
+                      {resources.length === 0 && <div className="text-xs text-gray-400 italic px-2">No resources attached yet.</div>}
                       {resources.map(r => (
-                        <div key={r.id} className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs">
-                          <a href={r.url} target="_blank" rel="noreferrer" className="text-brand-orange font-bold hover:underline flex items-center gap-2"><LinkIcon size={12}/> {r.title}</a>
+                        <div key={r.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 shadow-sm rounded-xl text-xs overflow-hidden">
+                          <a href={r.url} target="_blank" rel="noreferrer" className="text-brand-orange font-bold hover:underline flex items-center gap-2 truncate"><LinkIcon size={12} className="shrink-0"/> <span className="truncate">{r.title}</span></a>
                         </div>
                       ))}
                     </div>
                   </div>
 
-                  <div className="space-y-4">
+                  {/* DISCUSSION FIX: min-w-0 added here as well */}
+                  <div className="flex flex-col min-w-0 space-y-4">
                     <label className="text-[11px] font-bold uppercase tracking-widest text-gray-400">Discussion</label>
-                    <div className="bg-gray-50 rounded-2xl p-4 max-h-60 overflow-y-auto space-y-4 border border-gray-100">
+                    <div className="bg-gray-50 rounded-2xl p-4 h-64 overflow-y-auto flex flex-col space-y-4 border border-gray-100">
+                      {comments.length === 0 && <div className="text-xs text-gray-400 italic text-center mt-4">No comments yet.</div>}
                       {comments.map(c => (
-                        <div key={c.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-50">
-                          <div className="font-bold text-[11px] text-gray-900 mb-1">{c.username}</div>
-                          <div className="text-gray-600 text-xs leading-relaxed">{c.content}</div>
+                        <div key={c.id} className="bg-white p-3 rounded-xl shadow-sm border border-gray-100">
+                          <div className="flex justify-between items-start mb-1 gap-2">
+                            <div className="font-bold text-[11px] text-gray-900 truncate">{c.username}</div>
+                            <div className="text-[9px] text-gray-400 font-medium whitespace-nowrap">
+                              {new Date(c.created_at).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </div>
+                          </div>
+                          <div className="text-gray-600 text-xs leading-relaxed break-words">{c.content}</div>
                         </div>
                       ))}
                     </div>
                     <div className="flex gap-2">
                       <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} placeholder="Add a comment..." className="flex-1 text-sm border-gray-200 rounded-xl px-4" />
-                      <button onClick={handlePostComment} className="p-2.5 bg-brand-orange text-white rounded-xl shadow-orange-200 shadow-lg hover:bg-orange-600"><Send size={16} /></button>
+                      <button onClick={handlePostComment} className="p-2.5 bg-brand-orange text-white rounded-xl shadow-orange-200 shadow-lg hover:bg-orange-600 shrink-0"><Send size={16} /></button>
                     </div>
                   </div>
                 </div>

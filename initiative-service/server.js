@@ -57,7 +57,7 @@ app.post('/api/initiatives', async (req, res) => {
         );
         res.status(201).json(newInitiative.rows[0]);
     } catch (err) {
-        console.error(err.message);
+        console.error("POST Error:", err.message);
         res.status(500).json({ error: 'Server Error' });
     }
 });
@@ -76,7 +76,7 @@ app.put('/api/initiatives/:id', async (req, res) => {
             SET title = $1, 
                 description = $2, 
                 status = $3, 
-                due_date = $4,  
+                due_date = $4, 
                 next_action = $5, 
                 last_update = $6, 
                 supervising_name = $7, 
@@ -89,9 +89,10 @@ app.put('/api/initiatives/:id', async (req, res) => {
             next_action, last_update, supervising_name, owner_name, id
         ]);
         
+        if (updated.rows.length === 0) return res.status(404).json({ error: "Task not found" });
         res.json(updated.rows[0]);
     } catch (err) {
-        console.error(err.message);
+        console.error("PUT Error:", err.message);
         res.status(500).json({ error: 'Server Error' });
     }
 });
@@ -274,6 +275,8 @@ app.post('/api/projects', async (req, res) => {
         res.status(500).json({ error: 'Server Error creating project' });
     }
 });
+
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Initiative Service running on port ${PORT}`));
